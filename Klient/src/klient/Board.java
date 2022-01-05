@@ -7,8 +7,11 @@ package klient;
 import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.net.Socket;
 import javax.swing.JButton;
+import javax.swing.JOptionPane;
 
 /**
  *
@@ -26,21 +29,35 @@ public class Board extends javax.swing.JFrame {
     }
     private final Button[][] buttons;
     private final Socket socket;
-    /**
-     * Creates new form Board
-     */
+
     public Board(Socket socket) {
         initComponents();
         this.socket = socket;
         buttons = new Button[8][8];
         for (int i = 0; i < 8; i++){
             for (int j = 0; j < 8; j++){
+                final int ti = i;
+                final int tj = j;
                 buttons[i][j] = new Button(i, j);
                 buttons[i][j].setBounds(i * 60, j * 60, 60, 60);
                 buttons[i][j].addActionListener(new ActionListener(){
                     @Override
                     public void actionPerformed(ActionEvent e){
                         //TODO: Send clicked button coordinates
+                        try
+                        {
+                            OutputStream socketOutputStream = socket.getOutputStream();
+                            String msg = "1" + Integer.toString(ti) + " " + Integer.toString(tj);
+                            socketOutputStream.write(msg.getBytes());
+                        }
+                        catch (IOException err)
+                        {
+                            JOptionPane.showMessageDialog(null, err);
+                        }
+                        catch (NullPointerException err)
+                        {
+                            JOptionPane.showMessageDialog(null, err);
+                        }
                     }
                 });
                 this.add(buttons[i][j]);
@@ -50,6 +67,10 @@ public class Board extends javax.swing.JFrame {
         buttons[4][4].setBackground(Color.black);
         buttons[3][4].setBackground(Color.white);
         buttons[4][3].setBackground(Color.white);
+    }
+    
+    public Socket getSocket(){
+        return socket;
     }
 
     /**
@@ -86,41 +107,6 @@ public class Board extends javax.swing.JFrame {
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
-
-    /**
-     * @param args the command line arguments
-     */
-    public static void main(String args[]) {
-        /* Set the Nimbus look and feel */
-        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
-        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
-         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
-         */
-        try {
-            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
-                if ("Nimbus".equals(info.getName())) {
-                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
-                    break;
-                }
-            }
-        } catch (ClassNotFoundException ex) {
-            java.util.logging.Logger.getLogger(Board.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (InstantiationException ex) {
-            java.util.logging.Logger.getLogger(Board.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (IllegalAccessException ex) {
-            java.util.logging.Logger.getLogger(Board.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
-            java.util.logging.Logger.getLogger(Board.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        }
-        //</editor-fold>
-
-        /* Create and display the form */
-        java.awt.EventQueue.invokeLater(new Runnable() {
-            public void run() {
-                new Board().setVisible(true);
-            }
-        });
-    }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JLabel jLabel1;

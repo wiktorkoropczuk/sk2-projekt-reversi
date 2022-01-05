@@ -8,7 +8,7 @@ public class Klient {
         window.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         window.setVisible(true);
         window.getSocket();*/
-        Board board = new Board();
+        Board board = new Board(null);
         board.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         board.setVisible(true);
     }
