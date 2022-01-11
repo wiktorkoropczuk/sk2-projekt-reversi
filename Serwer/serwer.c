@@ -12,13 +12,13 @@
 #include <time.h>
 #include <pthread.h>
 #include <sys/epoll.h>
+#include <error.h>
 
-#define SERVER_PORT 1234
 #define QUEUE_SIZE 5
 #define MAX_GAMES 16
 #define MAX_EVENTS 10
 
-enum RESPONSES {ACCEPTED, FULLLOBBY, FULLGAMES, NOTYOURMOVE};
+enum RESPONSES {ACCEPTED, FULLLOBBY, FULLGAMES, NOTYOURMOVE, DIDNOTSTART};
 enum TURN {NOTSTARTED, PLAYER1, PLAYER2, END};
 
 struct game_t
@@ -95,36 +95,37 @@ void* ThreadBehavior(void* t_data)
                 if (th_data->games[game].turn == NOTSTARTED)
                 {
                     puts("Game did not start.");
+                    int response = DIDNOTSTART;
+                    int val = write(ev->data.fd, &response, sizeof(int));
                     continue;
                 }
                 if (player + 1 != th_data->games[game].turn)
                 {
                     puts("Not player's turn.");
+                    int response = NOTYOURMOVE;
+                    int val = write(ev->data.fd, &response, sizeof(int));
                     continue;
                 }
                 int buttons[2];
-                int val = read(ev->data.fd, &buttons, 2 * sizeof(int));
-                if (val == -1)
-                {
-                    perror("Reading info about buttons.");
-                }
-                else if (val == 0)
-                {
-                    puts("Disconnected player.");
-                }
+                int val = read(ev->data.fd, buttons, 2 * sizeof(int));
                 //PLACEHOLDER
-                th_data->games[game].board[buttons[0]][buttons[1]] = player;
+                printf("%d %d\n", buttons[0], buttons[1]);
+                th_data->games[game].board[buttons[0]][buttons[1]] = player + 1;
                 int response = ACCEPTED;
                 val = write(ev->data.fd, &response, 1 * sizeof(int));
-                if (val == -1)
-                {
-                    perror("Writing info about response.");
-                }
-                else if (val == 0)
-                {
-                    puts("Disconnected player.");
-                }
                 val = write(ev->data.fd, th_data->games[game].board, 8 * 8 * sizeof(int));
+                if (th_data->games[game].turn == PLAYER1)
+                    th_data->games[game].turn = PLAYER2;
+                else
+                    th_data->games[game].turn = PLAYER1;
+                for (int j = 0; j < 8; j++)
+                {
+                    for (int k = 0; k < 8; k++)
+                    {
+                        printf("%d ", th_data->games[game].board[j][k]);
+                    }
+                    printf("\n");
+                }
                 //END
             }
             else if (ev->events & (EPOLLERR | EPOLLHUP))
@@ -150,7 +151,7 @@ int main(int argc, char* argv[])
     memset(&server_address, 0, sizeof(struct sockaddr));
     server_address.sin_family = AF_INET;
     server_address.sin_addr.s_addr = htonl(INADDR_ANY);
-    server_address.sin_port = htons(SERVER_PORT);
+    server_address.sin_port = htons(atoi(argv[1]));
 
     server_socket_descriptor = socket(AF_INET, SOCK_STREAM, 0);
     if (server_socket_descriptor < 0)

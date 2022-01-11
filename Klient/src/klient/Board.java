@@ -8,8 +8,12 @@ import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
+import java.math.BigInteger;
 import java.net.Socket;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import javax.swing.JButton;
 import javax.swing.JOptionPane;
 
@@ -46,9 +50,50 @@ public class Board extends javax.swing.JFrame {
                         //TODO: Send clicked button coordinates
                         try
                         {
+                            System.out.print(ti);
+                            System.out.println(tj);
                             OutputStream socketOutputStream = socket.getOutputStream();
-                            String msg = "1" + Integer.toString(ti) + " " + Integer.toString(tj);
-                            socketOutputStream.write(msg.getBytes());
+                            byte[] msg = new byte[8];
+                            byte[] tmp = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(ti).array();
+                            System.arraycopy(tmp, 0, msg, 0, 4);
+                            tmp = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(tj).array();
+                            System.arraycopy(tmp, 0, msg, 4, 4);
+                            socketOutputStream.write(msg);
+                            InputStream socketInputStream = socket.getInputStream();
+                            byte[] response = socketInputStream.readNBytes(4);
+                            ByteBuffer buf = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).put(response);
+                            buf.rewind();
+                            int resp = buf.getInt();
+                            buf.rewind();
+                            switch (resp){
+                                case 0:
+                                    byte[] arr = socketInputStream.readNBytes(4 * 64);
+                                    for (int li = 0; li < 8; li++){
+                                        for (int lj = 0; lj < 8; lj++){
+                                            byte[] t = new byte[4];
+                                            System.arraycopy(arr, (li * 8 + lj) * 4, t, 0, 4);
+                                            buf = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).put(t);
+                                            buf.rewind();
+                                            int val = buf.getInt();
+                                            buf.rewind();
+                                            System.out.print(val);
+                                            System.out.print(" ");
+                                            switch (val){
+                                                case 0:
+                                                    buttons[lj][li].setBackground(Color.BLUE);
+                                                    break;
+                                                case 1:
+                                                    buttons[lj][li].setBackground(Color.BLACK);
+                                                    break;
+                                                case 2:
+                                                    buttons[lj][li].setBackground(Color.WHITE);
+                                                    break;
+                                            }
+                                        }
+                                        System.out.println("");
+                                    }
+                                    break;
+                            }
                         }
                         catch (IOException err)
                         {
