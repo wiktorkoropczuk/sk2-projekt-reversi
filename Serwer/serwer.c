@@ -19,12 +19,15 @@
 #define MAX_EVENTS 10
 
 enum RESPONSES {ACCEPTED, FULLLOBBY, FULLGAMES, NOTYOURMOVE};
+enum TURN {NOTSTARTED, PLAYER1, PLAYER2, END};
 
 struct game_t
 {
     char lobbyName[80];
     int player1Socket;
+    int timeout1;
     int player2Socket;
+    int timeout2;
     int board[8][8];
     int turn;
 };
@@ -36,7 +39,26 @@ struct thread_data_t
     int size;
 };
 
-void *ThreadBehavior(void *t_data)
+void* CheckTimeouts(void* t_data)
+{
+    pthread_detach(pthread_self());
+    struct thread_data_t *th_data = (struct thread_data_t*)t_data;
+    for (;;)
+    {
+        for (int i = 0; i < th_data->size; i++)
+        {
+            if (th_data->games[i].player1Socket != 0)
+            {
+
+            }
+        }
+        sleep(1);
+    }
+    
+    
+}
+
+void* ThreadBehavior(void* t_data)
 {
     pthread_detach(pthread_self());
     struct thread_data_t *th_data = (struct thread_data_t*)t_data;
@@ -46,7 +68,7 @@ void *ThreadBehavior(void *t_data)
         int val = epoll_wait(th_data->epoll, (struct epoll_event*)&ev, MAX_EVENTS, -1); 
         for (int i = 0; i < val; i++)
         {
-            if (ev->events | EPOLLIN)
+            if (ev->events & EPOLLIN)
             {
                 int found = -1;
                 for (int j = 0; j < th_data->size; j++)
@@ -68,8 +90,14 @@ void *ThreadBehavior(void *t_data)
                     continue;
                 }
                 int game = found / 2;
+                printf("%d\n", game);
                 int player = found % 2;
-                if (player != th_data->games[game].turn)
+                if (th_data->games[game].turn == NOTSTARTED)
+                {
+                    puts("Game did not start.");
+                    continue;
+                }
+                if (player + 1 != th_data->games[game].turn)
                 {
                     puts("Not player's turn.");
                     continue;
@@ -98,6 +126,10 @@ void *ThreadBehavior(void *t_data)
                 }
                 val = write(ev->data.fd, th_data->games[game].board, 8 * 8 * sizeof(int));
                 //END
+            }
+            else if (ev->events & (EPOLLERR | EPOLLHUP))
+            {
+                puts("Client disconnected.");
             }
         }
     }
@@ -149,6 +181,7 @@ int main(int argc, char* argv[])
     }
 
     struct thread_data_t data;
+    data.epoll = epoll;
     int create_result = 0;
     pthread_t thread1;
     create_result = pthread_create(&thread1, NULL, ThreadBehavior, &data);
@@ -186,12 +219,16 @@ int main(int argc, char* argv[])
                 {
                     data.games[i].player2Socket = connection_socket_descriptor;
                     found = 1;
+                    if (data.games[i].player1Socket != 0)
+                        data.games[i].turn = PLAYER1;
                     break;
                 }
                 else if (data.games[i].player1Socket == 0)
                 {
                     data.games[i].player1Socket = connection_socket_descriptor;
                     found = 1;
+                    if (data.games[i].player2Socket != 0)
+                        data.games[i].turn = PLAYER1;
                     break;
                 }
                 found = 0;
@@ -220,7 +257,7 @@ int main(int argc, char* argv[])
             continue;
         }
         struct epoll_event ev;
-        ev.events = EPOLLIN | EPOLLET | EPOLLOUT;
+        ev.events = EPOLLIN | EPOLLET | EPOLLOUT | EPOLLHUP | EPOLLERR;
         ev.data.fd = connection_socket_descriptor;
         val = epoll_ctl(epoll, EPOLL_CTL_ADD, connection_socket_descriptor, &ev);
         if (val == -1)
@@ -230,6 +267,7 @@ int main(int argc, char* argv[])
         }
         int resp = ACCEPTED;
         val = write(connection_socket_descriptor, &resp, sizeof(int));
+        
     }
 
     close(server_socket_descriptor);
