@@ -177,24 +177,32 @@ int main(int argc, char* argv[])
             continue;
         }
 
-        int found = 0;
+        int found = -1;
         for (int i = 0; i < data.size; i++)
         {
-            if (memcmp(data.games[i].lobbyName, lobbyName, 80) == 0)
+            if (!memcmp(data.games[i].lobbyName, lobbyName, 80))
             {
                 if (data.games[i].player2Socket == 0)
                 {
                     data.games[i].player2Socket = connection_socket_descriptor;
                     found = 1;
+                    break;
                 }
+                else if (data.games[i].player1Socket == 0)
+                {
+                    data.games[i].player1Socket = connection_socket_descriptor;
+                    found = 1;
+                    break;
+                }
+                found = 0;
                 break;
             }
         }
-        if (!found)
+        if (found == -1)
         {
             if (data.size == MAX_GAMES)
             {
-                int conn = FULLGAMES;
+                int conn = FULLLOBBY;
                 write(connection_socket_descriptor, &conn, sizeof(int));
                 continue;
             }
@@ -203,6 +211,13 @@ int main(int argc, char* argv[])
                 data.games[data.size].player1Socket = connection_socket_descriptor;
                 memcpy(data.games[data.size++].lobbyName, lobbyName, 80);
             }
+        }
+        else if (found == 0)
+        {
+            puts("Full lobby.");
+            int conn = FULLGAMES;
+            write(connection_socket_descriptor, &conn, sizeof(int));
+            continue;
         }
         struct epoll_event ev;
         ev.events = EPOLLIN | EPOLLET | EPOLLOUT;

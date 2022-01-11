@@ -33,7 +33,6 @@ public class Klient{
             }
         }
         if (window.getSocket() != null){
-            System.out.println("TEST");
             Board board = new Board(window.getSocket());
             board.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
             board.setVisible(true);

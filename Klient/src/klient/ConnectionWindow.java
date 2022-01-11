@@ -131,9 +131,12 @@ public class ConnectionWindow extends javax.swing.JFrame {
         {
             socket = new Socket(this.jTextField1.getText(), Integer.parseInt(this.jTextField2.getText()));
             OutputStream is = socket.getOutputStream();
-            is.write(this.jTextField3.getText().getBytes());
+            byte[] name = new byte[80];
+            System.arraycopy(jTextField3.getText().getBytes(), 0, name, 0, jTextField3.getText().getBytes().length);
+            is.write(name);
             byte[] response = socket.getInputStream().readNBytes(4);
             int resp = new BigInteger(response).intValue();
+            System.out.println(resp);
             switch (resp)
             {
                 case 0:
@@ -141,6 +144,8 @@ public class ConnectionWindow extends javax.swing.JFrame {
                     break;
                 default:
                     JOptionPane.showMessageDialog(this, "Nie polaczono.");
+                    socket.close();
+                    socket = null;
                     break;
             }
         }
