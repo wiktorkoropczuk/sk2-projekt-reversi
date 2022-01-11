@@ -4,6 +4,10 @@
  */
 package klient;
 
+import java.awt.event.WindowEvent;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.math.BigInteger;
 import java.net.Socket;
 import javax.swing.JOptionPane;
 
@@ -59,7 +63,7 @@ public class ConnectionWindow extends javax.swing.JFrame {
             }
         });
 
-        jTextField2.setText("8888");
+        jTextField2.setText("1234");
 
         jLabel1.setFont(new java.awt.Font("Tahoma", 1, 11)); // NOI18N
         jLabel1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
@@ -123,17 +127,29 @@ public class ConnectionWindow extends javax.swing.JFrame {
     }//GEN-LAST:event_jTextField1ActionPerformed
 
     private void jButton1MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jButton1MouseClicked
-        /*try
+        try
         {
-            socket = new Socket(this.jTextField1.getText(), Integer.getInteger(this.jTextField2.getText()));
+            socket = new Socket(this.jTextField1.getText(), Integer.parseInt(this.jTextField2.getText()));
+            OutputStream is = socket.getOutputStream();
+            is.write(this.jTextField3.getText().getBytes());
+            byte[] response = socket.getInputStream().readNBytes(4);
+            int resp = new BigInteger(response).intValue();
+            switch (resp)
+            {
+                case 0:
+                    dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
+                    break;
+                default:
+                    JOptionPane.showMessageDialog(this, "Nie polaczono.");
+                    break;
+            }
         }
         catch (Throwable err)
         {
             JOptionPane.showMessageDialog(this, "Wystapil blad: " + err.getMessage());
             return;
-        }*/
+        }
         
-        this.dispose();
     }//GEN-LAST:event_jButton1MouseClicked
 
     // Variables declaration - do not modify//GEN-BEGIN:variables

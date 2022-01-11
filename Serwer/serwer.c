@@ -18,7 +18,7 @@
 #define MAX_GAMES 16
 #define MAX_EVENTS 10
 
-enum RESPONSES {ACCEPTED, FULLLOBBY, FULLGAMES};
+enum RESPONSES {ACCEPTED, FULLLOBBY, FULLGAMES, NOTYOURMOVE};
 
 struct game_t
 {
@@ -43,7 +43,7 @@ void *ThreadBehavior(void *t_data)
 
     struct epoll_event ev[MAX_EVENTS];
     for(;;) {
-        int val = epoll_wait(th_data->epoll, &ev, MAX_EVENTS, -1); 
+        int val = epoll_wait(th_data->epoll, (struct epoll_event*)&ev, MAX_EVENTS, -1); 
         for (int i = 0; i < val; i++)
         {
             if (ev->events | EPOLLIN)
@@ -74,8 +74,8 @@ void *ThreadBehavior(void *t_data)
                     puts("Not player's turn.");
                     continue;
                 }
-                int buttons[4];
-                int val = read(ev->data.fd, &buttons, 4 * sizeof(int));
+                int buttons[2];
+                int val = read(ev->data.fd, &buttons, 2 * sizeof(int));
                 if (val == -1)
                 {
                     perror("Reading info about buttons.");
@@ -84,6 +84,20 @@ void *ThreadBehavior(void *t_data)
                 {
                     puts("Disconnected player.");
                 }
+                //PLACEHOLDER
+                th_data->games[game].board[buttons[0]][buttons[1]] = player;
+                int response = ACCEPTED;
+                val = write(ev->data.fd, &response, 1 * sizeof(int));
+                if (val == -1)
+                {
+                    perror("Writing info about response.");
+                }
+                else if (val == 0)
+                {
+                    puts("Disconnected player.");
+                }
+                val = write(ev->data.fd, th_data->games[game].board, 8 * 8 * sizeof(int));
+                //END
             }
         }
     }
@@ -127,7 +141,7 @@ int main(int argc, char* argv[])
         exit(EXIT_FAILURE);
     }
 
-    int epoll = epoll_create1();
+    int epoll = epoll_create1(0);
     if (epoll == -1)
     {
         perror("Epoll create");
@@ -163,7 +177,7 @@ int main(int argc, char* argv[])
             continue;
         }
 
-        int found = false;
+        int found = 0;
         for (int i = 0; i < data.size; i++)
         {
             if (memcmp(data.games[i].lobbyName, lobbyName, 80) == 0)
@@ -199,6 +213,8 @@ int main(int argc, char* argv[])
             perror("Adding to epoll.");
             exit(EXIT_FAILURE);
         }
+        int resp = ACCEPTED;
+        val = write(connection_socket_descriptor, &resp, sizeof(int));
     }
 
     close(server_socket_descriptor);
