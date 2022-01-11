@@ -18,7 +18,7 @@
 #define MAX_GAMES 16
 #define MAX_EVENTS 10
 
-enum RESPONSES {ACCEPTED, FULLLOBBY, FULLGAMES, NOTYOURMOVE, DIDNOTSTART};
+enum RESPONSES {ACCEPTED = 0, FULLLOBBY = 1, FULLGAMES = 2, NOTYOURMOVE = 3, DIDNOTSTART = 4, ILLEGALMOVE = 5, FIELDTAKEN = 6, SHOULDIGNORE = 7};
 enum TURN {NOTSTARTED, PLAYER1, PLAYER2, END};
 
 struct game_t
@@ -90,43 +90,40 @@ void* ThreadBehavior(void* t_data)
                     continue;
                 }
                 int game = found / 2;
-                printf("%d\n", game);
                 int player = found % 2;
+                int buttons[2];
+                int val = read(ev->data.fd, buttons, 2 * sizeof(int));
+                printf("%d %d\n", buttons[0], buttons[1]);
                 if (th_data->games[game].turn == NOTSTARTED)
                 {
                     puts("Game did not start.");
                     int response = DIDNOTSTART;
-                    int val = write(ev->data.fd, &response, sizeof(int));
+                    int val = write(th_data->games[game].player1Socket, &response, sizeof(int));
+                    val = write(th_data->games[game].player2Socket, &response, sizeof(int));
+                    val = write(th_data->games[game].player1Socket, th_data->games[game].board, 8 * 8 * sizeof(int));
+                    val = write(th_data->games[game].player2Socket, th_data->games[game].board, 8 * 8 * sizeof(int));
                     continue;
                 }
                 if (player + 1 != th_data->games[game].turn)
                 {
                     puts("Not player's turn.");
                     int response = NOTYOURMOVE;
-                    int val = write(ev->data.fd, &response, sizeof(int));
+                    int val = write(th_data->games[game].player1Socket, &response, sizeof(int));
+                    val = write(th_data->games[game].player2Socket, &response, sizeof(int));
+                    val = write(th_data->games[game].player1Socket, th_data->games[game].board, 8 * 8 * sizeof(int));
+                    val = write(th_data->games[game].player2Socket, th_data->games[game].board, 8 * 8 * sizeof(int));
                     continue;
                 }
-                int buttons[2];
-                int val = read(ev->data.fd, buttons, 2 * sizeof(int));
-                //PLACEHOLDER
-                printf("%d %d\n", buttons[0], buttons[1]);
                 th_data->games[game].board[buttons[0]][buttons[1]] = player + 1;
                 int response = ACCEPTED;
-                val = write(ev->data.fd, &response, 1 * sizeof(int));
-                val = write(ev->data.fd, th_data->games[game].board, 8 * 8 * sizeof(int));
+                val = write(th_data->games[game].player1Socket, &response, 1 * sizeof(int));
+                val = write(th_data->games[game].player1Socket, th_data->games[game].board, 8 * 8 * sizeof(int));
+                val = write(th_data->games[game].player2Socket, &response, 1 * sizeof(int));
+                val = write(th_data->games[game].player2Socket, th_data->games[game].board, 8 * 8 * sizeof(int));
                 if (th_data->games[game].turn == PLAYER1)
                     th_data->games[game].turn = PLAYER2;
                 else
                     th_data->games[game].turn = PLAYER1;
-                for (int j = 0; j < 8; j++)
-                {
-                    for (int k = 0; k < 8; k++)
-                    {
-                        printf("%d ", th_data->games[game].board[j][k]);
-                    }
-                    printf("\n");
-                }
-                //END
             }
             else if (ev->events & (EPOLLERR | EPOLLHUP))
             {
@@ -222,6 +219,10 @@ int main(int argc, char* argv[])
                     found = 1;
                     if (data.games[i].player1Socket != 0)
                         data.games[i].turn = PLAYER1;
+                    data.games[i].board[3][3] = 1;
+                    data.games[i].board[4][4] = 1;
+                    data.games[i].board[3][4] = 2;
+                    data.games[i].board[4][3] = 2;
                     break;
                 }
                 else if (data.games[i].player1Socket == 0)
@@ -230,6 +231,10 @@ int main(int argc, char* argv[])
                     found = 1;
                     if (data.games[i].player2Socket != 0)
                         data.games[i].turn = PLAYER1;
+                    data.games[i].board[3][3] = 1;
+                    data.games[i].board[4][4] = 1;
+                    data.games[i].board[3][4] = 2;
+                    data.games[i].board[4][3] = 2;
                     break;
                 }
                 found = 0;

@@ -36,6 +36,8 @@ public class Klient{
             Board board = new Board(window.getSocket());
             board.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
             board.setVisible(true);
+            Thread thread = new Thread(new BoardManager(board));
+            thread.start();
         }
         
     }

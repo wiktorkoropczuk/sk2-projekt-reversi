@@ -4,9 +4,13 @@
  */
 package klient;
 
+import java.awt.Color;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.Socket;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.Arrays;
 import javax.swing.JOptionPane;
 
@@ -22,24 +26,44 @@ public class BoardManager implements Runnable{
     public void run() {
         for (;;){
             Socket socket = board.getSocket();
-            try
-            {
+            try{
+                OutputStream socketOutputStream = socket.getOutputStream();
                 InputStream socketInputStream = socket.getInputStream();
-                byte[] r = socketInputStream.readNBytes(4);
-                Integer val = new Integer(Arrays.toString(r));
-                switch (val)
-                {
+                byte[] response = socketInputStream.readNBytes(4);
+                ByteBuffer buf = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).put(response);
+                buf.rewind();
+                int resp = buf.getInt();
+                buf.rewind();
+                switch (resp){
                     case 0:
-                        //Game stopped
-                        break;
-                    case 1:
-                        //Read button and its new value
                         break;
                 }
+                byte[] arr = socketInputStream.readNBytes(4 * 64);
+                for (int li = 0; li < 8; li++) {
+                    for (int lj = 0; lj < 8; lj++) {
+                        byte[] t = new byte[4];
+                        System.arraycopy(arr, (li * 8 + lj) * 4, t, 0, 4);
+                        buf = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).put(t);
+                        buf.rewind();
+                        int val = buf.getInt();
+                        buf.rewind();
+                        switch (val) {
+                            case 0:
+                                board.buttons[li][lj].setOpaque(true);
+                                break;
+                            case 1:
+                                board.buttons[li][lj].setBackground(Color.BLACK);
+                                break;
+                            case 2:
+                                board.buttons[li][lj].setBackground(Color.WHITE);
+                                break;
+                        }
+                    }
+                }
             }
-            catch (IOException err)
-            {
+            catch (IOException err){
                 JOptionPane.showMessageDialog(null, err);
+                break;
             }
         }
     }

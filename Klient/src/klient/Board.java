@@ -23,7 +23,7 @@ import javax.swing.JOptionPane;
  */
 public class Board extends javax.swing.JFrame {
 
-    private class Button extends JButton{
+    public class Button extends JButton{
         public Button(int i, int j){
             this.i = i;
             this.j = j;
@@ -31,7 +31,7 @@ public class Board extends javax.swing.JFrame {
         public int i;
         public int j;
     }
-    private final Button[][] buttons;
+    public final Button[][] buttons;
     private final Socket socket;
 
     public Board(Socket socket) {
@@ -47,11 +47,8 @@ public class Board extends javax.swing.JFrame {
                 buttons[i][j].addActionListener(new ActionListener(){
                     @Override
                     public void actionPerformed(ActionEvent e){
-                        //TODO: Send clicked button coordinates
                         try
                         {
-                            System.out.print(ti);
-                            System.out.println(tj);
                             OutputStream socketOutputStream = socket.getOutputStream();
                             byte[] msg = new byte[8];
                             byte[] tmp = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(ti).array();
@@ -59,41 +56,6 @@ public class Board extends javax.swing.JFrame {
                             tmp = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(tj).array();
                             System.arraycopy(tmp, 0, msg, 4, 4);
                             socketOutputStream.write(msg);
-                            InputStream socketInputStream = socket.getInputStream();
-                            byte[] response = socketInputStream.readNBytes(4);
-                            ByteBuffer buf = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).put(response);
-                            buf.rewind();
-                            int resp = buf.getInt();
-                            buf.rewind();
-                            switch (resp){
-                                case 0:
-                                    byte[] arr = socketInputStream.readNBytes(4 * 64);
-                                    for (int li = 0; li < 8; li++){
-                                        for (int lj = 0; lj < 8; lj++){
-                                            byte[] t = new byte[4];
-                                            System.arraycopy(arr, (li * 8 + lj) * 4, t, 0, 4);
-                                            buf = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).put(t);
-                                            buf.rewind();
-                                            int val = buf.getInt();
-                                            buf.rewind();
-                                            System.out.print(val);
-                                            System.out.print(" ");
-                                            switch (val){
-                                                case 0:
-                                                    buttons[lj][li].setBackground(Color.BLUE);
-                                                    break;
-                                                case 1:
-                                                    buttons[lj][li].setBackground(Color.BLACK);
-                                                    break;
-                                                case 2:
-                                                    buttons[lj][li].setBackground(Color.WHITE);
-                                                    break;
-                                            }
-                                        }
-                                        System.out.println("");
-                                    }
-                                    break;
-                            }
                         }
                         catch (IOException err)
                         {
@@ -127,33 +89,22 @@ public class Board extends javax.swing.JFrame {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        jLabel1 = new javax.swing.JLabel();
-
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
-
-        jLabel1.setText("Gra");
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                .addContainerGap(745, Short.MAX_VALUE)
-                .addComponent(jLabel1)
-                .addGap(38, 38, 38))
+            .addGap(0, 480, Short.MAX_VALUE)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(jLabel1)
-                .addContainerGap(475, Short.MAX_VALUE))
+            .addGap(0, 480, Short.MAX_VALUE)
         );
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JLabel jLabel1;
     // End of variables declaration//GEN-END:variables
 }
