@@ -18,7 +18,7 @@
 #define MAX_GAMES 16
 #define MAX_EVENTS 10
 
-enum RESPONSES {ACCEPTED = 0, FULLLOBBY = 1, FULLGAMES = 2, NOTYOURMOVE = 3, DIDNOTSTART = 4, ILLEGALMOVE = 5, FIELDTAKEN = 6, SHOULDIGNORE = 7};
+enum RESPONSES {ACCEPTED = 0, FULLLOBBY = 1, FULLGAMES = 2, NOTYOURMOVE = 3, DIDNOTSTART = 4, ILLEGALMOVE = 5, FIELDTAKEN = 6, SHOULDIGNORE = 7, PLAYER1WON = 8, PLAYER2WON = 9};
 enum TURN {NOTSTARTED, PLAYER1, PLAYER2, END};
 
 struct game_t
@@ -29,6 +29,7 @@ struct game_t
     int player2Socket;
     int timeout2;
     int board[8][8];
+    int freeFields;
     int turn;
 };
 
@@ -38,6 +39,177 @@ struct thread_data_t
     struct game_t games[MAX_GAMES];
     int size;
 };
+
+int VerifyBoard(int i, int j, int board[8][8], int player)
+{
+    int changed = 0;
+    int ti = i;
+    int tj = j;
+    while (ti > -1)
+    {
+    ti--;
+        if (board[ti][tj] == 0)
+            break;
+        if (board[ti][tj] == player + 1)
+        {
+            ti++;
+            while (ti != i)
+            {
+                board[ti][tj] = player + 1;
+                ti++;
+                changed = 1;
+            }
+            break;
+        }
+    }
+    ti = i;
+    tj = j;
+    while (ti < 8)
+    {
+    ti++;
+        if (board[ti][tj] == 0)
+            break;
+        if (board[ti][tj] == player + 1)
+        {
+            ti--;
+            while (ti != i)
+            {
+                board[ti][tj] = player + 1;
+                ti--;
+                changed = 1;
+            }
+            break;
+        }
+    }
+    ti = i;
+    tj = j;
+    while (tj > -1)
+    {
+    tj--;
+        if (board[ti][tj] == 0)
+            break;
+        if (board[ti][tj] == player + 1)
+        {
+            tj++;
+            while (tj != j)
+            {
+                board[ti][tj] = player + 1;
+                tj++;
+                changed = 1;
+            }
+            break;
+        }
+    }
+    ti = i;
+    tj = j;
+    while (ti < 8)
+    {
+    tj++;
+        if (board[ti][tj] == 0)
+            break;
+        if (board[ti][tj] == player + 1)
+        {
+            tj--;
+            while (tj != j)
+            {
+                board[ti][tj] = player + 1;
+                tj--;
+                changed = 1;
+            }
+            break;
+        }
+    }
+    ti = i;
+    tj = j;
+    while (ti > -1 && tj > -1)
+    {
+    ti--;
+    tj--;
+        if (board[ti][tj] == 0)
+            break;
+        if (board[ti][tj] == player + 1)
+        {
+            ti++;
+            tj++;
+            while (tj != j && ti != i)
+            {
+                board[ti][tj] = player + 1;
+                ti++;
+                tj++;
+                changed = 1;
+            }
+            break;
+        }
+    }
+    ti = i;
+    tj = j;
+    while (ti > -1 && tj < 8)
+    {
+    ti--;
+    tj++;
+        if (board[ti][tj] == 0)
+            break;
+        if (board[ti][tj] == player + 1)
+        {
+            ti++;
+            tj--;
+            while (tj != j && ti != i)
+            {
+                board[ti][tj] = player + 1;
+                ti++;
+                tj--;
+                changed = 1;
+            }
+            break;
+        }
+    }
+    ti = i;
+    tj = j;
+    while (ti < 8 && tj < 8)
+    {
+    ti++;
+    tj++;
+        if (board[ti][tj] == 0)
+            break;
+        if (board[ti][tj] == player + 1)
+        {
+            ti--;
+            tj--;
+            while (tj != j && ti != i)
+            {
+                board[ti][tj] = player + 1;
+                ti--;
+                tj--;
+                changed = 1;
+            }
+            break;
+        }
+    }
+    ti = i;
+    tj = j;
+    while (ti < 8 && tj > -1)
+    {
+    ti++;
+    tj--;
+        if (board[ti][tj] == 0)
+            break;
+        if (board[ti][tj] == player + 1)
+        {
+            ti--;
+            tj++;
+            while (tj != j && ti != i)
+            {
+                board[ti][tj] = player + 1;
+                ti--;
+                tj++;
+                changed = 1;
+            }
+            break;
+        }
+    }
+
+    return changed;
+}
 
 void* CheckTimeouts(void* t_data)
 {
@@ -58,13 +230,13 @@ void* CheckTimeouts(void* t_data)
     
 }
 
-void* ThreadBehavior(void* t_data)
+void* EpollLoop(void* t_data)
 {
     pthread_detach(pthread_self());
     struct thread_data_t *th_data = (struct thread_data_t*)t_data;
-
     struct epoll_event ev[MAX_EVENTS];
-    for(;;) {
+    for(;;) 
+    {
         int val = epoll_wait(th_data->epoll, (struct epoll_event*)&ev, MAX_EVENTS, -1); 
         for (int i = 0; i < val; i++)
         {
@@ -114,7 +286,46 @@ void* ThreadBehavior(void* t_data)
                     val = write(th_data->games[game].player2Socket, th_data->games[game].board, 8 * 8 * sizeof(int));
                     continue;
                 }
+                if (th_data->games[game].board[buttons[0]][buttons[1]] != 0)
+                {
+                    puts("Field taken.");
+                    int response = FIELDTAKEN;
+                    int val = write(th_data->games[game].player1Socket, &response, sizeof(int));
+                    val = write(th_data->games[game].player2Socket, &response, sizeof(int));
+                    val = write(th_data->games[game].player1Socket, th_data->games[game].board, 8 * 8 * sizeof(int));
+                    val = write(th_data->games[game].player2Socket, th_data->games[game].board, 8 * 8 * sizeof(int));
+                    continue;
+                }
+                int board[8][8];
+                memcpy(board, th_data->games[game].board, 64 * sizeof(int));
+                int fieldsChanged = VerifyBoard(buttons[0], buttons[1], board, player);
+                if (!fieldsChanged)
+                {
+                    puts("Illegal move.");
+                    int response = ILLEGALMOVE;
+                    int val = write(th_data->games[game].player1Socket, &response, sizeof(int));
+                    val = write(th_data->games[game].player2Socket, &response, sizeof(int));
+                    val = write(th_data->games[game].player1Socket, th_data->games[game].board, 8 * 8 * sizeof(int));
+                    val = write(th_data->games[game].player2Socket, th_data->games[game].board, 8 * 8 * sizeof(int));
+                    continue;
+                }
+                memcpy(th_data->games[game].board, board, 64 * sizeof(int));
                 th_data->games[game].board[buttons[0]][buttons[1]] = player + 1;
+                if (--th_data->games[game].freeFields == 0)
+                {
+                    int blacks = 0, whites = 0;
+                    for (int j = 0; j < 8; j++)
+                    {
+                        for (int k = 0; k < 8; k++)
+                        {
+                            if (th_data->games[game].board[j][k] == 1)
+                                blacks++;
+                            else
+                                whites++;
+                        }
+                    }
+                }
+                puts("Move accepted.");
                 int response = ACCEPTED;
                 val = write(th_data->games[game].player1Socket, &response, 1 * sizeof(int));
                 val = write(th_data->games[game].player1Socket, th_data->games[game].board, 8 * 8 * sizeof(int));
@@ -166,7 +377,8 @@ int main(int argc, char* argv[])
     }
 
     listen_result = listen(server_socket_descriptor, QUEUE_SIZE);
-    if (listen_result < 0) {
+    if (listen_result < 0) 
+    {
         perror("Listen");
         exit(EXIT_FAILURE);
     }
@@ -182,8 +394,9 @@ int main(int argc, char* argv[])
     data.epoll = epoll;
     int create_result = 0;
     pthread_t thread1;
-    create_result = pthread_create(&thread1, NULL, ThreadBehavior, &data);
-    if (create_result){
+    create_result = pthread_create(&thread1, NULL, EpollLoop, &data);
+    if (create_result)
+    {
         perror("Pthread create");
         exit(EXIT_FAILURE);
     }
@@ -223,6 +436,7 @@ int main(int argc, char* argv[])
                     data.games[i].board[4][4] = 1;
                     data.games[i].board[3][4] = 2;
                     data.games[i].board[4][3] = 2;
+                    data.games[i].freeFields = 60;
                     break;
                 }
                 else if (data.games[i].player1Socket == 0)
@@ -235,6 +449,7 @@ int main(int argc, char* argv[])
                     data.games[i].board[4][4] = 1;
                     data.games[i].board[3][4] = 2;
                     data.games[i].board[4][3] = 2;
+                    data.games[i].freeFields = 60;
                     break;
                 }
                 found = 0;
