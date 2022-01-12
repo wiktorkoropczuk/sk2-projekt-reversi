@@ -270,30 +270,21 @@ void* EpollLoop(void* t_data)
                 {
                     puts("Game did not start.");
                     int response = DIDNOTSTART;
-                    int val = write(th_data->games[game].player1Socket, &response, sizeof(int));
-                    val = write(th_data->games[game].player2Socket, &response, sizeof(int));
-                    val = write(th_data->games[game].player1Socket, th_data->games[game].board, 8 * 8 * sizeof(int));
-                    val = write(th_data->games[game].player2Socket, th_data->games[game].board, 8 * 8 * sizeof(int));
+                    int val = write(ev->data.fd, &response, sizeof(int));
                     continue;
                 }
                 if (player + 1 != th_data->games[game].turn)
                 {
                     puts("Not player's turn.");
                     int response = NOTYOURMOVE;
-                    int val = write(th_data->games[game].player1Socket, &response, sizeof(int));
-                    val = write(th_data->games[game].player2Socket, &response, sizeof(int));
-                    val = write(th_data->games[game].player1Socket, th_data->games[game].board, 8 * 8 * sizeof(int));
-                    val = write(th_data->games[game].player2Socket, th_data->games[game].board, 8 * 8 * sizeof(int));
+                    int val = write(ev->data.fd, &response, sizeof(int));
                     continue;
                 }
                 if (th_data->games[game].board[buttons[0]][buttons[1]] != 0)
                 {
                     puts("Field taken.");
                     int response = FIELDTAKEN;
-                    int val = write(th_data->games[game].player1Socket, &response, sizeof(int));
-                    val = write(th_data->games[game].player2Socket, &response, sizeof(int));
-                    val = write(th_data->games[game].player1Socket, th_data->games[game].board, 8 * 8 * sizeof(int));
-                    val = write(th_data->games[game].player2Socket, th_data->games[game].board, 8 * 8 * sizeof(int));
+                    int val = write(ev->data.fd, &response, sizeof(int));
                     continue;
                 }
                 int board[8][8];
@@ -303,10 +294,7 @@ void* EpollLoop(void* t_data)
                 {
                     puts("Illegal move.");
                     int response = ILLEGALMOVE;
-                    int val = write(th_data->games[game].player1Socket, &response, sizeof(int));
-                    val = write(th_data->games[game].player2Socket, &response, sizeof(int));
-                    val = write(th_data->games[game].player1Socket, th_data->games[game].board, 8 * 8 * sizeof(int));
-                    val = write(th_data->games[game].player2Socket, th_data->games[game].board, 8 * 8 * sizeof(int));
+                    int val = write(ev->data.fd, &response, sizeof(int));
                     continue;
                 }
                 memcpy(th_data->games[game].board, board, 64 * sizeof(int));
