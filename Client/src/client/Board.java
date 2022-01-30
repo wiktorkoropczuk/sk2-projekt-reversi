@@ -2,19 +2,22 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
  */
-package klient;
+package client;
 
 import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.math.BigInteger;
 import java.net.Socket;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import javax.swing.JButton;
+import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 
 /**
@@ -44,11 +47,11 @@ public class Board extends javax.swing.JFrame {
                 final int tj = j;
                 buttons[i][j] = new Button(i, j);
                 buttons[i][j].setBounds(i * 60, j * 60, 55, 55);
+                final JFrame tmp = this;
                 buttons[i][j].addActionListener(new ActionListener(){
                     @Override
                     public void actionPerformed(ActionEvent e){
-                        try
-                        {
+                        try{
                             OutputStream socketOutputStream = socket.getOutputStream();
                             byte[] msg = new byte[12];
                             byte[] tmp = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(14).array();
@@ -58,13 +61,12 @@ public class Board extends javax.swing.JFrame {
                             tmp = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(tj).array();
                             System.arraycopy(tmp, 0, msg, 8, 4);
                             socketOutputStream.write(msg);
-                        }
-                        catch (IOException err)
-                        {
+                        }catch (NullPointerException err){
                             JOptionPane.showMessageDialog(null, err);
-                        }
-                        catch (NullPointerException err)
-                        {
+                        }catch (SocketException err){
+                            JOptionPane.showMessageDialog(null, "Rozlaczono z serwerem.");
+                            dispatchEvent(new WindowEvent(tmp, WindowEvent.WINDOW_CLOSING));
+                        }catch (IOException err){
                             JOptionPane.showMessageDialog(null, err);
                         }
                     }

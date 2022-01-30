@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package klient;
+package client;
 
 import java.awt.Color;
 import java.awt.event.WindowEvent;
@@ -101,29 +101,27 @@ public class BoardManager implements Runnable {
                     case 8:
                         JOptionPane.showMessageDialog(board, "Player 1 won.");
                         board.dispatchEvent(new WindowEvent(board, WindowEvent.WINDOW_CLOSING));
-                        break;
+                        return;
                     case 9:
                         JOptionPane.showMessageDialog(board, "Player 2 won.");
                         board.dispatchEvent(new WindowEvent(board, WindowEvent.WINDOW_CLOSING));
-                        break;
+                        return;
                     case 10:
-                        System.out.println("Received ping");
                         byte[] msg = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(11).array();
                         socket.getOutputStream().write(msg);
-                        System.out.println("Sent ack");
                         break;
                     case 12:
                         JOptionPane.showMessageDialog(board, "Player 1 timeout.");
                         board.dispatchEvent(new WindowEvent(board, WindowEvent.WINDOW_CLOSING));
-                        break;
+                        return;
                     case 13:
                         JOptionPane.showMessageDialog(board, "Player 2 timeout.");
                         board.dispatchEvent(new WindowEvent(board, WindowEvent.WINDOW_CLOSING));
-                        break;
+                        return;
                     case 15:
                         JOptionPane.showMessageDialog(board, "Draw.");
                         board.dispatchEvent(new WindowEvent(board, WindowEvent.WINDOW_CLOSING));
-                        break;
+                        return;
                     case 16:
                         board.getContentPane().setBackground(Color.GREEN);
                         break;

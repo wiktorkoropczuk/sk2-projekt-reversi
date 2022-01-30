@@ -1,10 +1,10 @@
-package klient;
+package client;
 
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import javax.swing.JFrame;
 
-public class Klient{
+public class Client{
     public static final Object lock = new Object();
     
     public static void main(String[] args){
