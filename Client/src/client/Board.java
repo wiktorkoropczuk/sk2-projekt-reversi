@@ -33,6 +33,11 @@ public class Board extends javax.swing.JFrame {
     }
     public final Button[][] buttons;
     private final Socket socket;
+    private final Object lock = new Object();
+    
+    public Object getLock(){
+        return lock;
+    }
 
     public Board(Socket socket) {
         initComponents();
@@ -46,25 +51,26 @@ public class Board extends javax.swing.JFrame {
                 buttons[i][j].setBounds(i * 60, j * 60, 55, 55);
                 final JFrame tmp = this;
                 buttons[i][j].addActionListener((ActionEvent e) -> {
-                    try {
-                        OutputStream socketOutputStream = socket.getOutputStream();
-                        byte[] msg = new byte[12];
-                        byte[] tmp1 = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(14).array();
-                        System.arraycopy(tmp1, 0, msg, 0, 4);
-                        tmp1 = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(ti).array();
-                        System.arraycopy(tmp1, 0, msg, 4, 4);
-                        tmp1 = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(tj).array();
-                        System.arraycopy(tmp1, 0, msg, 8, 4);
-                        socketOutputStream.write(msg);
-                    }catch (NullPointerException err){
-                        JOptionPane.showMessageDialog(null, err);
-                    }catch (SocketException err){
-                        JOptionPane.showMessageDialog(null, "Disconnected from server.");
-                        dispatchEvent(new WindowEvent(tmp, WindowEvent.WINDOW_CLOSING));
-                    }catch (IOException err){
-                        JOptionPane.showMessageDialog(null, err);
-                    }
-                });
+                    synchronized(lock){
+                        try {
+                            OutputStream socketOutputStream = socket.getOutputStream();
+                            byte[] msg = new byte[12];
+                            byte[] tmp1 = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(14).array();
+                            System.arraycopy(tmp1, 0, msg, 0, 4);
+                            tmp1 = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(ti).array();
+                            System.arraycopy(tmp1, 0, msg, 4, 4);
+                            tmp1 = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(tj).array();
+                            System.arraycopy(tmp1, 0, msg, 8, 4);
+                            socketOutputStream.write(msg);
+                        }catch (NullPointerException err){
+                            JOptionPane.showMessageDialog(null, err);
+                        }catch (SocketException err){
+                            JOptionPane.showMessageDialog(null, "Disconnected from server.");
+                            dispatchEvent(new WindowEvent(tmp, WindowEvent.WINDOW_CLOSING));
+                        }catch (IOException err){
+                            JOptionPane.showMessageDialog(null, err);
+                        }
+                    }});
                 this.add(buttons[i][j]);
             }
         }

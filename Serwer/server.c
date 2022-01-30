@@ -16,7 +16,7 @@
 #include "boardfunctions.h"
 
 #define QUEUE_SIZE 5
-#define MAX_GAMES 1
+#define MAX_GAMES 16
 #define MAX_EVENTS 10
 
 /*
@@ -31,6 +31,7 @@ struct thread_data_t
 {
     int epoll;
     struct game_t games[MAX_GAMES];
+    pthread_mutex_t* mut;
 };
 
 
@@ -64,6 +65,7 @@ void* EventLoop(void* t_data)
         int numberOfEvents = epoll_wait(th_data->epoll, (struct epoll_event*)&ev, MAX_EVENTS, -1); 
         for (int i = 0; i < numberOfEvents; i++)
         {
+            pthread_mutex_lock(th_data->mut);
             if (ev->events & EPOLLIN)
             {
                 int found = FindGame(th_data->games, ev->data.fd);
@@ -88,6 +90,8 @@ void* EventLoop(void* t_data)
                     if (write(th_data->games[game].player2Socket, &response, sizeof(int)) == -1)
                         perror("Telling player that player disconnected");
                     FreeGame(&th_data->games[game]);
+                    pthread_mutex_unlock(th_data->mut);
+                    continue;
                 }
                 
                 switch (clientResponse)
@@ -112,6 +116,8 @@ void* EventLoop(void* t_data)
                         if (write(th_data->games[game].player2Socket, &response, sizeof(int)) == -1)
                             perror("Telling player that player disconnected");
                         FreeGame(&th_data->games[game]);
+                        pthread_mutex_unlock(th_data->mut);
+                        continue;
                     }
                     if (th_data->games[game].turn == NOTSTARTED)
                     {
@@ -121,6 +127,7 @@ void* EventLoop(void* t_data)
                             perror("Telling player that the game hasn't started yet");
                             exit(EXIT_FAILURE);
                         }
+                        pthread_mutex_unlock(th_data->mut);
                         continue;
                     }
                     if (player + 1 != th_data->games[game].turn)
@@ -131,6 +138,7 @@ void* EventLoop(void* t_data)
                             perror("Telling player that it's not his time to move");
                             exit(EXIT_FAILURE);
                         }
+                        pthread_mutex_unlock(th_data->mut);
                         continue;
                     }
                     if (th_data->games[game].board[buttons[0]][buttons[1]] != 0)
@@ -141,6 +149,7 @@ void* EventLoop(void* t_data)
                             perror("Telling player that he tried to take taken field");
                             exit(EXIT_FAILURE);
                         }
+                        pthread_mutex_unlock(th_data->mut);
                         continue;
                     }
                     int board[8][8];
@@ -154,6 +163,7 @@ void* EventLoop(void* t_data)
                             perror("Telling player that his move is not valid");
                             exit(EXIT_FAILURE);
                         }
+                        pthread_mutex_unlock(th_data->mut);
                         continue;
                     }
                     memcpy(th_data->games[game].board, board, 64 * sizeof(int));
@@ -196,7 +206,7 @@ void* EventLoop(void* t_data)
                             exit(EXIT_FAILURE);
                         }
                     }
-                    //if (--th_data->games[game].freeFields == 0 || !CheckForMoves(th_data->games[game].board, player == 0 ? 1 : 0))
+                    if (--th_data->games[game].freeFields == 0 || !CheckForMoves(th_data->games[game].board, player == 0 ? 1 : 0))
                     {
                         int blacks = 0, whites = 0;
                         for (int j = 0; j < 8; j++)
@@ -246,6 +256,7 @@ void* EventLoop(void* t_data)
                     puts("Telling player that player disconnected");
                 FreeGame(&th_data->games[game]);
             }
+            pthread_mutex_unlock(th_data->mut);
         }
     }
 
@@ -294,6 +305,8 @@ int main(int argc, char* argv[])
     struct thread_data_t data;
     memset(&data, 0, sizeof(struct thread_data_t));
     data.epoll = epoll;
+    pthread_mutex_t mut = PTHREAD_MUTEX_INITIALIZER;
+    data.mut = &mut;
     pthread_t thread1;
     if (pthread_create(&thread1, NULL, EventLoop, &data) != 0)
     {
@@ -321,6 +334,7 @@ int main(int argc, char* argv[])
         }
 
         int foundExist = -1;
+        pthread_mutex_lock(&mut);
         for (int i = 0; i < MAX_GAMES; i++)
         {
             if (!memcmp(data.games[i].lobbyName, lobbyName, 80))
@@ -355,6 +369,7 @@ int main(int argc, char* argv[])
                     perror("Telling player 1 that all lobbies are taken");
                 else
                     close(connection_socket_descriptor);
+                pthread_mutex_unlock(&mut);
                 continue;
             }
             else
@@ -370,6 +385,7 @@ int main(int argc, char* argv[])
                 perror("Telling player that the lobby is full");
             else
                 close(connection_socket_descriptor);
+            pthread_mutex_unlock(&mut);
             continue;
         }
         struct epoll_event ev;
@@ -396,6 +412,7 @@ int main(int argc, char* argv[])
                 exit(EXIT_FAILURE);
             }
         }
+        pthread_mutex_unlock(&mut);
     }
 
     return 0;

@@ -35,30 +35,32 @@ public class BoardManager implements Runnable {
                 byte[] arr;
                 switch (resp) {
                     case 0:
-                        arr = socketInputStream.readNBytes(4 * 64);
-                        for (int li = 0; li < 8; li++) {
-                            for (int lj = 0; lj < 8; lj++) {
-                                byte[] t = new byte[4];
-                                System.arraycopy(arr, (li * 8 + lj) * 4, t, 0, 4);
-                                buf = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).put(t);
-                                buf.rewind();
-                                int val = buf.getInt();
-                                buf.rewind();
-                                switch (val) {
-                                    case 0:
-                                        board.buttons[li][lj].setOpaque(true);
-                                        break;
-                                    case 1:
-                                        board.buttons[li][lj].setBackground(Color.BLACK);
-                                        break;
-                                    case 2:
-                                        board.buttons[li][lj].setBackground(Color.WHITE);
-                                        break;
+                        synchronized(board.getLock()){
+                            arr = socketInputStream.readNBytes(4 * 64);
+                            for (int li = 0; li < 8; li++) {
+                                for (int lj = 0; lj < 8; lj++) {
+                                    byte[] t = new byte[4];
+                                    System.arraycopy(arr, (li * 8 + lj) * 4, t, 0, 4);
+                                    buf = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).put(t);
+                                    buf.rewind();
+                                    int val = buf.getInt();
+                                    buf.rewind();
+                                    switch (val) {
+                                        case 0:
+                                            board.buttons[li][lj].setOpaque(true);
+                                            break;
+                                        case 1:
+                                            board.buttons[li][lj].setBackground(Color.BLACK);
+                                            break;
+                                        case 2:
+                                            board.buttons[li][lj].setBackground(Color.WHITE);
+                                            break;
+                                    }
                                 }
                             }
+                            board.getContentPane().setBackground(Color.RED);
                         }
-                        board.getContentPane().setBackground(Color.RED);
-                        break;
+                            break;
                     case 3:
                         JOptionPane.showMessageDialog(board, "It's your your turn.");
                         break;
@@ -72,29 +74,31 @@ public class BoardManager implements Runnable {
                         JOptionPane.showMessageDialog(board, "You cannot take a taken field.");
                         break;
                     case 7:
-                        arr = socketInputStream.readNBytes(4 * 64);
-                        for (int li = 0; li < 8; li++) {
-                            for (int lj = 0; lj < 8; lj++) {
-                                byte[] t = new byte[4];
-                                System.arraycopy(arr, (li * 8 + lj) * 4, t, 0, 4);
-                                buf = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).put(t);
-                                buf.rewind();
-                                int val = buf.getInt();
-                                buf.rewind();
-                                switch (val) {
-                                    case 0:
-                                        board.buttons[li][lj].setOpaque(true);
-                                        break;
-                                    case 1:
-                                        board.buttons[li][lj].setBackground(Color.BLACK);
-                                        break;
-                                    case 2:
-                                        board.buttons[li][lj].setBackground(Color.WHITE);
-                                        break;
+                        synchronized(board.getLock()){
+                            arr = socketInputStream.readNBytes(4 * 64);
+                            for (int li = 0; li < 8; li++) {
+                                for (int lj = 0; lj < 8; lj++) {
+                                    byte[] t = new byte[4];
+                                    System.arraycopy(arr, (li * 8 + lj) * 4, t, 0, 4);
+                                    buf = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).put(t);
+                                    buf.rewind();
+                                    int val = buf.getInt();
+                                    buf.rewind();
+                                    switch (val) {
+                                        case 0:
+                                            board.buttons[li][lj].setOpaque(true);
+                                            break;
+                                        case 1:
+                                            board.buttons[li][lj].setBackground(Color.BLACK);
+                                            break;
+                                        case 2:
+                                            board.buttons[li][lj].setBackground(Color.WHITE);
+                                            break;
+                                    }
                                 }
                             }
+                            board.getContentPane().setBackground(Color.GREEN);
                         }
-                        board.getContentPane().setBackground(Color.GREEN);
                         break;
                     case 8:
                         JOptionPane.showMessageDialog(board, "Player 1 won.");
