@@ -54,7 +54,9 @@ int FindGame(struct game_t games[MAX_GAMES], int fd)
     return -1;
 }
 
-
+/*
+ *  Funkcja wysylajaca i odbierajaca komunikaty zwiazane z rozgrywka
+ */
 void* EventLoop(void* t_data)
 {
     pthread_detach(pthread_self());
@@ -68,6 +70,7 @@ void* EventLoop(void* t_data)
             pthread_mutex_lock(th_data->mut);
             if (ev->events & EPOLLIN)
             {
+                //Wyszukiwanie gry, ktorej deskryptop dotyczy i odczyt typu komunikatu
                 int found = FindGame(th_data->games, ev->data.fd);
                 int game = found / 2;
                 int player = found % 2;
@@ -97,6 +100,8 @@ void* EventLoop(void* t_data)
                 switch (clientResponse)
                 {
                 case MOVE:;
+
+                    //Odczyt wybranego przez klienta pola
                     int buttons[2];
                     val = read(ev->data.fd, buttons, 2 * sizeof(int));
                     if (val == -1)
@@ -119,6 +124,8 @@ void* EventLoop(void* t_data)
                         pthread_mutex_unlock(th_data->mut);
                         continue;
                     }
+
+                    //Wykrywanie ruchu przed rozpoczeta gra
                     if (th_data->games[game].turn == NOTSTARTED)
                     {
                         int response = DIDNOTSTART;
@@ -130,6 +137,8 @@ void* EventLoop(void* t_data)
                         pthread_mutex_unlock(th_data->mut);
                         continue;
                     }
+
+                    //Wykrywanie ruchu gracza, ktory nie moze jeszcze wykonac ruchu
                     if (player + 1 != th_data->games[game].turn)
                     {
                         int response = NOTYOURMOVE;
@@ -141,6 +150,8 @@ void* EventLoop(void* t_data)
                         pthread_mutex_unlock(th_data->mut);
                         continue;
                     }
+
+                    //Wykrywanie proby zajecia zajetego pola przez gracza
                     if (th_data->games[game].board[buttons[0]][buttons[1]] != 0)
                     {
                         int response = FIELDTAKEN;
@@ -152,6 +163,8 @@ void* EventLoop(void* t_data)
                         pthread_mutex_unlock(th_data->mut);
                         continue;
                     }
+
+                    //Wykrywanie poprawnosci wykonanego ruchu
                     int board[8][8];
                     memcpy(board, th_data->games[game].board, 64 * sizeof(int));
                     int fieldsChanged = VerifyBoard(buttons[0], buttons[1], board, player);
@@ -166,6 +179,8 @@ void* EventLoop(void* t_data)
                         pthread_mutex_unlock(th_data->mut);
                         continue;
                     }
+
+                    //Aktualizacja planszy o poprawny ruch i wyslanie komunikatu klientowi o poprawnosci ruchu
                     memcpy(th_data->games[game].board, board, 64 * sizeof(int));
                     th_data->games[game].board[buttons[0]][buttons[1]] = player + 1;
                     int response = ACCEPTED;
@@ -179,6 +194,8 @@ void* EventLoop(void* t_data)
                             perror("Telling player that move was accepted");
                             exit(EXIT_FAILURE);
                     }
+
+                    //Wyslanie komunikatu przeciwnikowi o mozliwosci wykonania ruchu
                     response = WAKEUP;
                     if (ev->data.fd == th_data->games[game].player1Socket)
                     {
@@ -206,6 +223,8 @@ void* EventLoop(void* t_data)
                             exit(EXIT_FAILURE);
                         }
                     }
+
+                    //Wykrycie konca gry i wyslanie klientom komunikatu o zwyciezcy
                     if (--th_data->games[game].freeFields == 0 || !CheckForMoves(th_data->games[game].board, player == 0 ? 1 : 0))
                     {
                         int blacks = 0, whites = 0;
@@ -242,6 +261,7 @@ void* EventLoop(void* t_data)
             }
             else if (ev->events & (EPOLLERR | EPOLLHUP))
             {
+                //Wykrycie blednego deskryptora
                 int found = FindGame(th_data->games, ev->data.fd);
                 int game = found / 2;
                 int player = found % 2;
@@ -263,38 +283,36 @@ void* EventLoop(void* t_data)
     pthread_exit(NULL);
 }
 
-
+/*
+ *  Funkcja odpowiedzialna za tworzenie serwera i zarzadzaniem komunikatami zwiazanymi z dolaczeniem do rozgrywki.
+ */
 int main(int argc, char* argv[])
 {
+    //Inicjalizacja serwera
     signal(SIGPIPE, SIG_IGN);
     char reuse_addr_val = 1;
     struct sockaddr_in server_address;
-
     memset(&server_address, 0, sizeof(struct sockaddr));
     server_address.sin_family = AF_INET;
     server_address.sin_addr.s_addr = htonl(INADDR_ANY);
     server_address.sin_port = htons(atoi(argv[1]));
-
-    int server_socket_descriptor = socket(AF_INET, SOCK_STREAM, 0);
-    if (server_socket_descriptor == -1)
+    int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+    if (serverSocket == -1)
     {
         perror("Creating socket");
         exit(EXIT_FAILURE);
     }
-    setsockopt(server_socket_descriptor, SOL_SOCKET, SO_REUSEADDR, (char*)&reuse_addr_val, sizeof(char));
-
-    if (bind(server_socket_descriptor, (struct sockaddr*)&server_address, sizeof(struct sockaddr)) == -1)
+    setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, (char*)&reuse_addr_val, sizeof(char));
+    if (bind(serverSocket, (struct sockaddr*)&server_address, sizeof(struct sockaddr)) == -1)
     {
         perror("Bind function");
         exit(EXIT_FAILURE);
     }
-
-    if (listen(server_socket_descriptor, QUEUE_SIZE) == -1) 
+    if (listen(serverSocket, QUEUE_SIZE) == -1) 
     {
         perror("Listen function");
         exit(EXIT_FAILURE);
     }
-
     int epoll = epoll_create1(0);
     if (epoll == -1)
     {
@@ -302,6 +320,7 @@ int main(int argc, char* argv[])
         exit(EXIT_FAILURE);
     }
 
+    //Inicjalizacja watku
     struct thread_data_t data;
     memset(&data, 0, sizeof(struct thread_data_t));
     data.epoll = epoll;
@@ -313,16 +332,18 @@ int main(int argc, char* argv[])
         perror("Creating thread");
         exit(EXIT_FAILURE);
     }
+
+    //Odbieranie komunikatow o dolaczenie do rozgrywki
     for (;;)
     {
-        int connection_socket_descriptor = accept(server_socket_descriptor, NULL, NULL);
-        if (connection_socket_descriptor == -1)
+        int newClient = accept(serverSocket, NULL, NULL);
+        if (newClient == -1)
         {
             perror("Accepting new connection");
             exit(EXIT_FAILURE);
         }
         char lobbyName[80];
-        int val = read(connection_socket_descriptor, &lobbyName, 80);
+        int val = read(newClient, &lobbyName, 80);
         if (val == -1)
         {
             perror("Reading lobby name");
@@ -333,7 +354,8 @@ int main(int argc, char* argv[])
             continue;
         }
 
-        int foundExist = -1;
+        //Wyszukiwanie gry o podanym lobbyName i rozpoczecie gry
+        int foundExistingGame = -1;
         pthread_mutex_lock(&mut);
         for (int i = 0; i < MAX_GAMES; i++)
         {
@@ -341,72 +363,76 @@ int main(int argc, char* argv[])
             {
                 if (data.games[i].player2Socket == 0)
                 {
-                    data.games[i].player2Socket = connection_socket_descriptor;
-                    foundExist = i + 1;
+                    data.games[i].player2Socket = newClient;
+                    foundExistingGame = i + 1;
                     InitBoard(&data.games[i]);
-                    int resp = STARTYOU;
-                    if (write(data.games[i].player1Socket, &resp, sizeof(int)) == -1)
+                    int response = STARTYOU;
+                    if (write(data.games[i].player1Socket, &response, sizeof(int)) == -1)
                     {
                         perror("Telling player 1 to make his first move");
                         exit(EXIT_FAILURE);
                     }
                     break;
                 }
-                foundExist = 0;
+                foundExistingGame = 0;
                 break;
             }
         }
-        int foundFree;
-        if (foundExist == -1)
+
+        //Wyszukiwanie wolnego miejsca na nowa gre w przypadku nieznalezienia istniejacej gry
+        int foundFreeSlot;
+        if (foundExistingGame == -1)
         {
-            for (foundFree = 0; foundFree < MAX_GAMES; foundFree++)
-                if (!strlen(data.games[foundFree].lobbyName))
+            for (foundFreeSlot = 0; foundFreeSlot < MAX_GAMES; foundFreeSlot++)
+                if (!strlen(data.games[foundFreeSlot].lobbyName))
                     break;
-            if (foundFree == MAX_GAMES)
+            if (foundFreeSlot == MAX_GAMES)
             {
                 int conn = FULLGAMES;
-                if (write(connection_socket_descriptor, &conn, sizeof(int)) == -1)
+                if (write(newClient, &conn, sizeof(int)) == -1)
                     perror("Telling player 1 that all lobbies are taken");
                 else
-                    close(connection_socket_descriptor);
+                    close(newClient);
                 pthread_mutex_unlock(&mut);
                 continue;
             }
             else
             {
-                data.games[foundFree].player1Socket = connection_socket_descriptor;
-                memcpy(data.games[foundFree].lobbyName, lobbyName, 80);
+                data.games[foundFreeSlot].player1Socket = newClient;
+                memcpy(data.games[foundFreeSlot].lobbyName, lobbyName, 80);
             }
         }
-        else if (foundExist == 0)
+        else if (foundExistingGame == 0)
         {
             int conn = FULLLOBBY;
-            if (write(connection_socket_descriptor, &conn, sizeof(int)) == -1)
+            if (write(newClient, &conn, sizeof(int)) == -1)
                 perror("Telling player that the lobby is full");
             else
-                close(connection_socket_descriptor);
+                close(newClient);
             pthread_mutex_unlock(&mut);
             continue;
         }
+
+        //Wyslanie komunikatu do klienta o powodzeniu i dodanie deskryptora gniazda do instancji epoll
         struct epoll_event ev;
         ev.events = EPOLLIN | EPOLLET | EPOLLHUP | EPOLLERR;
-        ev.data.fd = connection_socket_descriptor;
-        val = epoll_ctl(epoll, EPOLL_CTL_ADD, connection_socket_descriptor, &ev);
+        ev.data.fd = newClient;
+        val = epoll_ctl(epoll, EPOLL_CTL_ADD, newClient, &ev);
         if (val == -1)
         {
             perror("Adding socket to epoll");
             exit(EXIT_FAILURE);
         }
-        int resp = ACCEPTED;
-        if (write(connection_socket_descriptor, &resp, sizeof(int)) == -1)
+        int response = ACCEPTED;
+        if (write(newClient, &response, sizeof(int)) == -1)
         {
             perror("Telling player 1 that he joined successfully");
             exit(EXIT_FAILURE);
         }
-        if (foundExist != -1)
+        if (foundExistingGame != -1)
         {
-            int resp = STARTENEMY;
-            if (write(connection_socket_descriptor, &resp, sizeof(int)) == -1)
+            int response = STARTENEMY;
+            if (write(newClient, &response, sizeof(int)) == -1)
             {
                 perror("Telling player 2 that he joined successfully");
                 exit(EXIT_FAILURE);
