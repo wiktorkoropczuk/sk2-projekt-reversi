@@ -4,11 +4,14 @@
  */
 package client;
 
+import java.awt.HeadlessException;
 import java.awt.event.WindowEvent;
-import java.io.InputStream;
+import java.io.IOException;
 import java.io.OutputStream;
 import java.math.BigInteger;
 import java.net.Socket;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import javax.swing.JOptionPane;
 
 /**
@@ -137,7 +140,10 @@ public class ConnectionWindow extends javax.swing.JFrame {
             System.arraycopy(jTextField3.getText().getBytes(), 0, name, 0, jTextField3.getText().getBytes().length);
             is.write(name);
             byte[] response = socket.getInputStream().readNBytes(4);
-            int resp = new BigInteger(response).intValue();
+            ByteBuffer buf = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).put(response);
+            buf.rewind();
+            int resp = buf.getInt();
+            buf.rewind();
             switch (resp)
             {
                 case 0:
@@ -160,10 +166,9 @@ public class ConnectionWindow extends javax.swing.JFrame {
                     break;
             }
         }
-        catch (Throwable err)
+        catch (HeadlessException | IOException | NumberFormatException err)
         {
             JOptionPane.showMessageDialog(this, "During connection an error occurred.\n" + err.getMessage());
-            return;
         }
         
     }//GEN-LAST:event_jButton1MouseClicked

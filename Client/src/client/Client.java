@@ -41,7 +41,7 @@ public class Client{
         }
         try{
             thread.join();
-        }catch (InterruptedException err){
+        }catch (InterruptedException | NullPointerException err){
             
         }
         

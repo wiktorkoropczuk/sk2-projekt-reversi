@@ -178,6 +178,7 @@ int CheckForMoves(int board[8][8], int player)
 
 void InitBoard(struct game_t* game)
 {
+    memset(game->board, 0, 64 * sizeof(int));
     game->board[3][3] = 1;
     game->board[4][4] = 1;
     game->board[3][4] = 2;
@@ -192,10 +193,10 @@ void FreeGame(struct game_t* game)
 {
     close(game->player1Socket);
     close(game->player2Socket);
-    memset(game->lobbyName, 0, 80);
+    memset(game->lobbyName, 0, 80 * sizeof(char));
     game->player1Socket = 0;
     game->player2Socket = 0;
-    memset(game->board, 0, 64);
+    memset(game->board, 0, 64 * sizeof(int));
     game->freeFields = 60;
     game->turn = NOTSTARTED;
 }

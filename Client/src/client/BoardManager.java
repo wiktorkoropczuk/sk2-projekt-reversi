@@ -8,16 +8,14 @@ import java.awt.Color;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.Arrays;
 import javax.swing.JOptionPane;
 
 public class BoardManager implements Runnable {
 
-    private Board board;
+    private final Board board;
 
     public BoardManager(Board board) {
         this.board = board;

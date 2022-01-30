@@ -6,12 +6,9 @@ package client;
 
 import java.awt.Color;
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
-import java.math.BigInteger;
 import java.net.Socket;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
@@ -48,27 +45,24 @@ public class Board extends javax.swing.JFrame {
                 buttons[i][j] = new Button(i, j);
                 buttons[i][j].setBounds(i * 60, j * 60, 55, 55);
                 final JFrame tmp = this;
-                buttons[i][j].addActionListener(new ActionListener(){
-                    @Override
-                    public void actionPerformed(ActionEvent e){
-                        try{
-                            OutputStream socketOutputStream = socket.getOutputStream();
-                            byte[] msg = new byte[12];
-                            byte[] tmp = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(14).array();
-                            System.arraycopy(tmp, 0, msg, 0, 4);
-                            tmp = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(ti).array();
-                            System.arraycopy(tmp, 0, msg, 4, 4);
-                            tmp = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(tj).array();
-                            System.arraycopy(tmp, 0, msg, 8, 4);
-                            socketOutputStream.write(msg);
-                        }catch (NullPointerException err){
-                            JOptionPane.showMessageDialog(null, err);
-                        }catch (SocketException err){
-                            JOptionPane.showMessageDialog(null, "Rozlaczono z serwerem.");
-                            dispatchEvent(new WindowEvent(tmp, WindowEvent.WINDOW_CLOSING));
-                        }catch (IOException err){
-                            JOptionPane.showMessageDialog(null, err);
-                        }
+                buttons[i][j].addActionListener((ActionEvent e) -> {
+                    try {
+                        OutputStream socketOutputStream = socket.getOutputStream();
+                        byte[] msg = new byte[12];
+                        byte[] tmp1 = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(14).array();
+                        System.arraycopy(tmp1, 0, msg, 0, 4);
+                        tmp1 = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(ti).array();
+                        System.arraycopy(tmp1, 0, msg, 4, 4);
+                        tmp1 = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(tj).array();
+                        System.arraycopy(tmp1, 0, msg, 8, 4);
+                        socketOutputStream.write(msg);
+                    }catch (NullPointerException err){
+                        JOptionPane.showMessageDialog(null, err);
+                    }catch (SocketException err){
+                        JOptionPane.showMessageDialog(null, "Disconnected from server.");
+                        dispatchEvent(new WindowEvent(tmp, WindowEvent.WINDOW_CLOSING));
+                    }catch (IOException err){
+                        JOptionPane.showMessageDialog(null, err);
                     }
                 });
                 this.add(buttons[i][j]);
