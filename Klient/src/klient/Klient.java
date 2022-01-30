@@ -21,8 +21,7 @@ public class Klient{
             }
         });
         window.setVisible(true);
-        while (window.isVisible())
-        {
+        while (window.isVisible()){
             synchronized(lock){
                 try{
                     lock.wait();
@@ -32,12 +31,18 @@ public class Klient{
                 }
             }
         }
+        Thread thread = null;
         if (window.getSocket() != null){
             Board board = new Board(window.getSocket());
             board.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
             board.setVisible(true);
-            Thread thread = new Thread(new BoardManager(board));
+            thread = new Thread(new BoardManager(board));
             thread.start();
+        }
+        try{
+            thread.join();
+        }catch (InterruptedException err){
+            
         }
         
     }

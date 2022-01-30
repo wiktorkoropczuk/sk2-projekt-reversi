@@ -43,18 +43,20 @@ public class Board extends javax.swing.JFrame {
                 final int ti = i;
                 final int tj = j;
                 buttons[i][j] = new Button(i, j);
-                buttons[i][j].setBounds(i * 60, j * 60, 60, 60);
+                buttons[i][j].setBounds(i * 60, j * 60, 55, 55);
                 buttons[i][j].addActionListener(new ActionListener(){
                     @Override
                     public void actionPerformed(ActionEvent e){
                         try
                         {
                             OutputStream socketOutputStream = socket.getOutputStream();
-                            byte[] msg = new byte[8];
-                            byte[] tmp = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(ti).array();
+                            byte[] msg = new byte[12];
+                            byte[] tmp = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(14).array();
                             System.arraycopy(tmp, 0, msg, 0, 4);
-                            tmp = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(tj).array();
+                            tmp = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(ti).array();
                             System.arraycopy(tmp, 0, msg, 4, 4);
+                            tmp = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(tj).array();
+                            System.arraycopy(tmp, 0, msg, 8, 4);
                             socketOutputStream.write(msg);
                         }
                         catch (IOException err)

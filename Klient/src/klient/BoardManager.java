@@ -5,6 +5,7 @@
 package klient;
 
 import java.awt.Color;
+import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -27,16 +28,16 @@ public class BoardManager implements Runnable {
         for (;;) {
             Socket socket = board.getSocket();
             try {
-                OutputStream socketOutputStream = socket.getOutputStream();
                 InputStream socketInputStream = socket.getInputStream();
                 byte[] response = socketInputStream.readNBytes(4);
                 ByteBuffer buf = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).put(response);
                 buf.rewind();
                 int resp = buf.getInt();
                 buf.rewind();
+                byte[] arr;
                 switch (resp) {
                     case 0:
-                        byte[] arr = socketInputStream.readNBytes(4 * 64);
+                        arr = socketInputStream.readNBytes(4 * 64);
                         for (int li = 0; li < 8; li++) {
                             for (int lj = 0; lj < 8; lj++) {
                                 byte[] t = new byte[4];
@@ -58,24 +59,76 @@ public class BoardManager implements Runnable {
                                 }
                             }
                         }
+                        board.getContentPane().setBackground(Color.RED);
                         break;
                     case 3:
-                        JOptionPane.showMessageDialog(null, "It' your your turn.");
+                        JOptionPane.showMessageDialog(board, "It's your your turn.");
                         break;
                     case 4:
-                        JOptionPane.showMessageDialog(null, "Game has not started yet.");
+                        JOptionPane.showMessageDialog(board, "Game has not started yet.");
                         break;
                     case 5:
-                        JOptionPane.showMessageDialog(null, "It's not a valid move.");
+                        JOptionPane.showMessageDialog(board, "It's not a valid move.");
                         break;
                     case 6:
-                        JOptionPane.showMessageDialog(null, "You cannot take a taken field.");
+                        JOptionPane.showMessageDialog(board, "You cannot take a taken field.");
+                        break;
+                    case 7:
+                        arr = socketInputStream.readNBytes(4 * 64);
+                        for (int li = 0; li < 8; li++) {
+                            for (int lj = 0; lj < 8; lj++) {
+                                byte[] t = new byte[4];
+                                System.arraycopy(arr, (li * 8 + lj) * 4, t, 0, 4);
+                                buf = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).put(t);
+                                buf.rewind();
+                                int val = buf.getInt();
+                                buf.rewind();
+                                switch (val) {
+                                    case 0:
+                                        board.buttons[li][lj].setOpaque(true);
+                                        break;
+                                    case 1:
+                                        board.buttons[li][lj].setBackground(Color.BLACK);
+                                        break;
+                                    case 2:
+                                        board.buttons[li][lj].setBackground(Color.WHITE);
+                                        break;
+                                }
+                            }
+                        }
+                        board.getContentPane().setBackground(Color.GREEN);
                         break;
                     case 8:
-                        JOptionPane.showMessageDialog(null, "Player 1 won.");
+                        JOptionPane.showMessageDialog(board, "Player 1 won.");
+                        board.dispatchEvent(new WindowEvent(board, WindowEvent.WINDOW_CLOSING));
                         break;
                     case 9:
-                        JOptionPane.showMessageDialog(null, "Player 2 won.");
+                        JOptionPane.showMessageDialog(board, "Player 2 won.");
+                        board.dispatchEvent(new WindowEvent(board, WindowEvent.WINDOW_CLOSING));
+                        break;
+                    case 10:
+                        System.out.println("Received ping");
+                        byte[] msg = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(11).array();
+                        socket.getOutputStream().write(msg);
+                        System.out.println("Sent ack");
+                        break;
+                    case 12:
+                        JOptionPane.showMessageDialog(board, "Player 1 timeout.");
+                        board.dispatchEvent(new WindowEvent(board, WindowEvent.WINDOW_CLOSING));
+                        break;
+                    case 13:
+                        JOptionPane.showMessageDialog(board, "Player 2 timeout.");
+                        board.dispatchEvent(new WindowEvent(board, WindowEvent.WINDOW_CLOSING));
+                        break;
+                    case 15:
+                        JOptionPane.showMessageDialog(board, "Draw.");
+                        board.dispatchEvent(new WindowEvent(board, WindowEvent.WINDOW_CLOSING));
+                        break;
+                    case 16:
+                        board.getContentPane().setBackground(Color.GREEN);
+                        break;
+                    case 17:
+                        board.getContentPane().setBackground(Color.RED);
                         break;
                 }
 
